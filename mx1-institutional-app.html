@@ -198,6 +198,19 @@
   .log .ts{font-family:var(--mono);color:var(--muted2);flex:0 0 64px} .log .tx{color:var(--ink)} .log .tx b{color:var(--teal)}
 
   .disclaimer{margin-top:22px;font-size:10px;color:var(--muted2);line-height:1.6;border-top:1px solid var(--line);padding-top:14px}
+
+  .modal{position:fixed;inset:0;background:rgba(4,10,20,.8);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal.show{display:flex}
+  .mpanel{width:100%;max-width:460px;background:#0f1f34;border:1px solid var(--line2);border-radius:18px;padding:24px;animation:rise .3s}
+  .mpanel h3{font-family:var(--serif);font-size:20px;margin-bottom:6px}
+  .mpanel .msub{font-size:12.5px;color:var(--muted);margin-bottom:16px;line-height:1.45}
+  .mstep{display:flex;gap:11px;margin-bottom:12px}
+  .mstep .mn{flex:0 0 auto;width:24px;height:24px;border-radius:7px;background:var(--grad);color:#04223a;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+  .mstep .mt{font-size:12.5px;color:var(--muted);line-height:1.4}.mstep .mt b{color:var(--ink)}
+  .msecure{display:flex;gap:9px;align-items:flex-start;font-size:11px;color:var(--teal);border:1px solid rgba(34,201,166,.3);background:rgba(34,201,166,.06);border-radius:11px;padding:11px 13px;margin:14px 0}
+  .mbtns{display:flex;gap:10px;margin-top:16px}
+  .mclose{flex:0 0 auto;background:none;border:1px solid var(--line2);color:var(--muted);border-radius:11px;padding:12px 16px;cursor:pointer;font-family:var(--sans);font-size:13px}
+  .mgo{flex:1;background:var(--grad);border:none;color:#04223a;font-weight:700;border-radius:11px;padding:12px;cursor:pointer;font-family:var(--sans);font-size:14px}
 </style>
 </head>
 <body>
@@ -292,7 +305,7 @@
           </div>
         </div>
 
-        <div class="note good"><span class="ic">✓</span><p>Either way, <b>you keep custody and control</b> and MX1 is granted trade-only connectivity — never a transfer or withdrawal path.</p></div>
+        <div class="note good"><span class="ic">✓</span><p><b>You keep custody. You grant trade-only access. You can revoke anytime.</b> Whichever you choose, your funds stay in your own account — MX1 can trade, but never withdraw or move them.</p></div>
       </div>
       <div class="actions"><button class="ghost" onclick="go(-1)">← Back</button><button class="primary" onclick="connectCustody()">Connect &amp; continue →</button></div>
     </section>
@@ -417,6 +430,11 @@
   </div>
 </div>
 
+<!-- Connect-custodian step. Opened by connectCustody(); content set by JS per rail.
+     IMPORTANT: no API key is ever entered or stored here. The front-end only kicks
+     off the connection; real key capture + encryption happen server-side. -->
+<div class="modal" id="connectModal"><div class="mpanel" id="modalBody"></div></div>
+
 <script>
 /* ============================================================
    STATE + STEP CONTROLLER  (no external deps, in-memory only)
@@ -481,13 +499,38 @@ function runKYC(){
 
 // STEP 3 — connect the investor's custodian (assets never move to MX1)
 function connectCustody(){
-  // TODO(backend): open the chosen custodian / OES connection.
-  //   Coinbase Prime: client grants a SCOPED API key with TRADE permission only
-  //     (read + trade, NOT transfer/withdraw) into this app; assets stay in Prime Custody
-  //     (Coinbase Custody Trust, qualified custodian). Prime API: REST / FIX / WebSocket.
-  //   Fireblocks / Copper(ClearLoop) / Ceffu(MirrorX) / Anchorage API for the others.
-  //   OR for "On-chain vault": WalletConnect -> deploy/assign user-owned smart account.
-  //   NEVER request transfer/withdrawal scope on any custodian key.
+  const body = document.getElementById('modalBody');
+  if(state.custodyOnchain){
+    body.innerHTML =
+      '<h3>Connect your wallet</h3>'+
+      '<div class="msub">On-chain self-custody on '+state.custody+'. No API key — you authorize with a wallet signature.</div>'+
+      '<div class="mstep"><div class="mn">1</div><div class="mt">Connect the wallet that will <b>own your vault</b> (WalletConnect / your wallet app).</div></div>'+
+      '<div class="mstep"><div class="mn">2</div><div class="mt">Sign once to grant MX1 a <b>scoped, revocable trade-only key</b> — never withdrawal.</div></div>'+
+      '<div class="msecure"><span>🔒</span><span>Your private keys never leave your wallet. MX1 only receives a session key, which you revoke anytime.</span></div>'+
+      '<div class="mbtns"><button class="mclose" onclick="closeModal()">Cancel</button><button class="mgo" onclick="submitConnection()">Connect wallet →</button></div>';
+  } else {
+    body.innerHTML =
+      '<h3>Connect '+state.custody+'</h3>'+
+      '<div class="msub">Link your custodian with a trade-only key. Your assets stay with '+state.custody+'.</div>'+
+      '<div class="mstep"><div class="mn">1</div><div class="mt">In your '+state.custody+' account, create an API key scoped to <b>read + trade</b> — <b style="color:var(--red)">not transfer</b>.</div></div>'+
+      '<div class="mstep"><div class="mn">2</div><div class="mt">Allowlist MX1\'s server IPs so the key only works from MX1.</div></div>'+
+      '<div class="mstep"><div class="mn">3</div><div class="mt">Enter the credentials on MX1\'s <b>secure connection page</b> — never on this screen.</div></div>'+
+      '<div class="msecure"><span>🔒</span><span>For your security, credentials are captured and encrypted on MX1\'s backend — never in your browser.</span></div>'+
+      '<div class="mbtns"><button class="mclose" onclick="closeModal()">Cancel</button><button class="mgo" onclick="submitConnection()">Continue to secure connection →</button></div>';
+  }
+  document.getElementById('connectModal').classList.add('show');
+}
+function closeModal(){ document.getElementById('connectModal').classList.remove('show'); }
+function submitConnection(){
+  // TODO(backend): hand off to your SERVER — never the browser.
+  //   Off-chain custodian (Coinbase Prime / BitGo / Fireblocks / ...):
+  //     redirect to a secure, backend-hosted page (or OAuth) where the client
+  //     enters the scoped read+trade API key/secret/passphrase. The backend
+  //     stores it ENCRYPTED, server-side, IP-allowlisted. The key must NEVER
+  //     touch this front-end or live in the DOM. Do NOT request transfer scope.
+  //   On-chain vault: open WalletConnect -> wallet signs to grant a scoped,
+  //     revocable session key to the audited vault (MX1Vault.sol setStrategist()).
+  closeModal();
   go(1);
 }
 
