@@ -497,9 +497,26 @@ function runKYC(){
   go(1);
 }
 
-// STEP 3 — connect the investor's custodian (assets never move to MX1)
-// Real, custodian-specific connection instructions. Exact UI labels follow each
-// provider's current API docs; the credential model below is accurate per provider.
+/* ============================================================================
+   CUSTODY CONNECTION STEPS  —  ✏️  EDIT HERE
+   ----------------------------------------------------------------------------
+   This is the ONLY place to change what a client sees when they connect a
+   custodian. Each custodian below has three editable parts:
+
+     cred   : the credential the client hands over   (shown in the lock note)
+     sub    : the one-line description under the title
+     steps  : the numbered steps the client follows  (add or remove freely)
+
+   ▸ TO EDIT a custodian :  change its `steps` (and `sub` / `cred`) below.
+   ▸ TO ADD a custodian  :  copy one whole block, paste it, and rename the key
+                            in quotes to EXACTLY match the chip label in the
+                            Custody step  (e.g.  'Gemini': { ... }).
+   ▸ Anything not listed here uses GENERIC_GUIDE as a fallback.
+   ▸ The ON-CHAIN wallet flow is separate — see connectCustody() further down.
+
+   (Exact menu names follow each provider's current API docs; the credential
+    model below is accurate per provider.)
+   ============================================================================ */
 const CUSTODY_GUIDES = {
   'Coinbase Prime': { cred:'Access Key + Secret + Passphrase',
     sub:'Trade-only API key. Assets stay in Coinbase Prime Custody (qualified custodian).',
@@ -568,19 +585,30 @@ function connectCustody(){
   document.getElementById('connectModal').classList.add('show');
 }
 function closeModal(){ document.getElementById('connectModal').classList.remove('show'); }
+// ▸ TO GO LIVE: set BACKEND_CONNECT_URL to your secure server page below.
+//   Left null, the flow just demos (advances without connecting).
+const BACKEND_CONNECT_URL = null;   // e.g. 'https://app.mx1trade.com/connect'
+
 function submitConnection(){
-  // TODO(backend): hand off to your SERVER — never the browser.
-  //   Off-chain custodian: redirect to a secure, backend-hosted page (or OAuth)
-  //     where the client enters the scoped read+trade credentials for that provider:
-  //       Coinbase Prime -> Access Key + Secret + Passphrase
-  //       Anchorage      -> API Key + Secret (withdrawals behind member quorum)
-  //       BitGo          -> API Access Token (trading scope, no spend)
-  //       Fireblocks     -> API Key + signing secret (CSR); TAP blocks withdrawal
-  //       Copper         -> API Key + Secret (ClearLoop trading delegation)
-  //     Backend stores ENCRYPTED, server-side, IP-allowlisted. Never in the DOM.
-  //     Do NOT request transfer/withdraw scope on any key.
-  //   On-chain vault: WalletConnect -> wallet signs to grant a scoped, revocable
-  //     session key to the audited vault (MX1Vault.sol setStrategist()).
+  if (BACKEND_CONNECT_URL) {
+    // PRODUCTION: hand off to YOUR secure server. Credentials are entered and
+    // encrypted THERE, never in this browser. We only pass which custodian/rail.
+    const url = BACKEND_CONNECT_URL
+      + '?custodian=' + encodeURIComponent(state.custody)
+      + '&rail=' + (state.custodyOnchain ? 'onchain' : 'offchain');
+    window.location.href = url;     // or window.open(url, 'mx1connect') + listen for completion
+    return;
+  }
+  // DEMO (no backend wired): just continue the flow.
+  // Backend must: receive scoped read+trade credentials for the provider —
+  //   Coinbase Prime -> Access Key + Secret + Passphrase
+  //   Anchorage      -> API Key + Secret (withdrawals behind member quorum)
+  //   BitGo          -> API Access Token (trading scope, no spend)
+  //   Fireblocks     -> API Key + signing secret (CSR); TAP blocks withdrawal
+  //   Copper         -> API Key + Secret (ClearLoop trading delegation)
+  // ...store ENCRYPTED, server-side, IP-allowlisted; NEVER in the DOM; never request transfer scope.
+  // On-chain vault: WalletConnect -> wallet grants a scoped, revocable session key
+  //   to the audited vault (MX1Vault.sol setStrategist()).
   closeModal();
   go(1);
 }
