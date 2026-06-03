@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MX1 · Institutional Access</title>
+
+<!--
+  ============================================================================
+  MX1 / MARIAH AI — INSTITUTIONAL ONBOARDING + DASHBOARD  (front-end scaffold)
+  ============================================================================
+  WHAT THIS IS:  the UI an institution clicks through to allocate, plus the
+                 dashboard they land on. Single file: HTML + CSS + vanilla JS.
+
+  WHAT THIS IS NOT:  the thing that moves money. Every real action below is a
+                     stub marked  // TODO(backend) / // TODO(contract).
+                     Wire those to:
+                       - KYC/KYB ............ Sumsub
+                       - Wallet / signing ... WalletConnect / wagmi / viem
+                       - Custody / OES ...... Fireblocks / Copper / Ceffu / custodian API
+                       - Trade-only auth .... your audited vault: setStrategist()/session key
+                       - Live data .......... your reporting API (NAV reconciled to custodian)
+
+  HONESTY RULES BAKED IN:  dashboard numbers are SAMPLE placeholders; the
+  "audited" badge and contract address show as PENDING until they are real.
+  The trade-only / no-withdraw guarantee lives in the audited contract +
+  custody permissions, NOT in this markup.
+  ============================================================================
+-->
+
+<style>
+  /* In production, self-host these or keep the import. Distinctive, non-generic pairing. */
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg:#08101e; --bg2:#0b1626; --panel:#0e1c30; --panel2:#10223a;
+    --line:rgba(96,156,214,.18); --line2:rgba(96,156,214,.32);
+    --ink:#eef4fb; --muted:#9ab0cc; --muted2:#6c8198;
+    --blue:#3b9fe0; --teal:#22c9a6; --green:#34d39a; --amber:#f4b860; --red:#f0607e;
+    --grad:linear-gradient(95deg,#2b8fe0 0%,#22c9a6 100%);
+    --serif:'Fraunces',Georgia,serif; --sans:'Hanken Grotesk',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+    --r:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--sans); color:var(--ink); background:
+      radial-gradient(1100px 600px at 85% -10%, rgba(43,143,224,.12), transparent 60%),
+      radial-gradient(900px 520px at 5% 110%, rgba(34,201,166,.10), transparent 60%),
+      linear-gradient(180deg,var(--bg),var(--bg2));
+    min-height:100vh; line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .grid-bg{position:fixed;inset:0;pointer-events:none;opacity:.5;z-index:0;
+    background-image:linear-gradient(rgba(96,156,214,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(96,156,214,.04) 1px,transparent 1px);background-size:34px 34px}
+  .app{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:28px 20px 60px}
+
+  /* header */
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;flex-wrap:wrap;gap:12px}
+  .brand{font-family:var(--serif);font-weight:700;font-size:22px;letter-spacing:.3px;
+    background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .brand small{display:block;font-family:var(--sans);font-weight:500;font-size:9px;letter-spacing:2.5px;color:var(--muted2);margin-top:2px}
+  .tag{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+
+  /* stepper */
+  .stepper{display:flex;justify-content:space-between;margin-bottom:26px;gap:4px}
+  .stp{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative}
+  .stp .dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;border:1.5px solid var(--line2);color:var(--muted);background:var(--panel);transition:.35s}
+  .stp.done .dot{background:linear-gradient(135deg,#1f7d63,#22c9a6);border-color:transparent;color:#06231b}
+  .stp.active .dot{background:var(--grad);border-color:transparent;color:#04223a;box-shadow:0 0 0 5px rgba(34,201,166,.14)}
+  .stp .lbl{font-size:10px;margin-top:7px;color:var(--muted2)}
+  .stp.done .lbl,.stp.active .lbl{color:var(--teal)}
+  .stp::after{content:"";position:absolute;top:15px;left:62%;width:76%;height:1.5px;background:var(--line)}
+  .stp:last-child::after{display:none}
+  .stp.done::after{background:linear-gradient(90deg,#22c9a6,var(--line))}
+
+  /* card */
+  .card{position:relative;border:1px solid var(--line2);border-radius:var(--r);
+    background:linear-gradient(180deg,rgba(20,38,62,.6),rgba(12,22,38,.6));overflow:hidden}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad)}
+  .pad{padding:28px}
+  .eyebrow{display:inline-block;font-size:10px;letter-spacing:.6px;color:var(--teal);background:rgba(34,201,166,.1);border:1px solid rgba(34,201,166,.25);border-radius:999px;padding:5px 12px;margin-bottom:14px}
+  h1.screen{font-family:var(--serif);font-weight:600;font-size:30px;line-height:1.12;margin-bottom:10px}
+  .sub{font-size:14px;color:var(--muted);max-width:62ch}
+  .sub b{color:var(--ink)}
+
+  /* step show/hide + entrance animation */
+  .step{display:none}
+  .step.show{display:block;animation:rise .45s cubic-bezier(.2,.7,.2,1)}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* form */
+  .field{margin-top:14px}
+  .field label{display:block;font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted2);margin-bottom:6px}
+  .field input,.field select{width:100%;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:11px;padding:12px 14px;color:var(--ink);font-family:var(--sans);font-size:14px;outline:none;transition:.2s}
+  .field input:focus,.field select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(34,201,166,.12)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+  /* choice cards */
+  .choice{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+  .cbox{border:1px solid var(--line2);border-radius:14px;padding:18px;cursor:pointer;transition:.2s;background:rgba(255,255,255,.012)}
+  .cbox:hover{border-color:var(--line2);transform:translateY(-2px)}
+  .cbox.sel{border-color:var(--teal);background:rgba(34,201,166,.07);box-shadow:0 0 0 3px rgba(34,201,166,.1)}
+  .cbox h3{font-size:16px;margin-bottom:3px}
+  .cbox .cs{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted2);margin-bottom:10px}
+  .cbox ul{list-style:none} .cbox li{font-size:12px;color:var(--muted);padding-left:18px;position:relative;margin-bottom:6px}
+  .cbox li::before{content:"✓";position:absolute;left:0;color:var(--teal)}
+
+  /* custodian grid */
+  .chips{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+  @media(max-width:640px){.chips{grid-template-columns:repeat(2,1fr)}.choice,.two{grid-template-columns:1fr}}
+  .chip{border:1px solid var(--line);border-radius:13px;padding:16px;text-align:center;cursor:pointer;transition:.2s;background:rgba(255,255,255,.012)}
+  .chip:hover{transform:translateY(-2px)}
+  .chip.sel{border-color:var(--teal);background:rgba(34,201,166,.07)}
+  .chip .tok{width:30px;height:30px;border-radius:9px;margin:0 auto 9px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#06121f;font-size:12px}
+  .chip .nm{font-size:13px;font-weight:600} .chip .tk{font-size:10px;color:var(--muted2)}
+
+  .lanehdr{display:flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink);font-weight:600;margin:20px 0 4px}
+  .lanehdr em{font-style:normal;color:var(--muted2);text-transform:none;letter-spacing:0;font-weight:400}
+  .lanehdr .dotg{width:8px;height:8px;border-radius:50%;background:var(--teal);flex:0 0 auto}
+  .lanehdr .dotb{width:8px;height:8px;border-radius:50%;background:var(--blue);flex:0 0 auto}
+  .lanecap{font-size:11.5px;color:var(--muted2);margin-bottom:8px}
+
+  /* sliders */
+  .slider{margin-top:18px}
+  .slider .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px}
+  .slider .top .k{color:var(--muted)} .slider .top .v{color:var(--ink);font-weight:600}
+  input[type=range]{width:100%;-webkit-appearance:none;height:6px;border-radius:6px;background:rgba(96,156,214,.18);outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#2b8fe0,#22c9a6);cursor:pointer;border:2px solid #08101e}
+  .venues{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+  .venue{font-size:12px;border:1px solid var(--line2);border-radius:999px;padding:7px 13px;cursor:pointer;color:var(--muted);user-select:none}
+  .venue.on{border-color:var(--teal);color:var(--teal);background:rgba(34,201,166,.08)}
+
+  /* permission panel */
+  .perm{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+  @media(max-width:640px){.perm{grid-template-columns:1fr}}
+  .pcol{border:1px solid var(--line);border-radius:14px;padding:16px}
+  .pcol.can{background:rgba(34,201,166,.05);border-color:rgba(34,201,166,.22)}
+  .pcol.cant{background:rgba(240,96,126,.05);border-color:rgba(240,96,126,.22)}
+  .pcol h4{font-size:11px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:11px}
+  .pcol.can h4{color:var(--teal)} .pcol.cant h4{color:var(--red)}
+  .pitem{display:flex;gap:9px;font-size:12.5px;color:var(--muted);margin-bottom:9px}
+  .pitem b{flex:0 0 auto} .can .pitem b{color:var(--teal)} .cant .pitem b{color:var(--red)}
+
+  /* verify element */
+  .verify{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding:12px 15px;border:1px dashed var(--line2);border-radius:12px;background:rgba(43,143,224,.05)}
+  .verify .vk{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted2)}
+  .verify .addr{font-family:var(--mono);font-size:12px;color:#9fd0ff}
+  .verify .vbadge{font-size:10px;color:var(--teal);border:1px solid rgba(34,201,166,.4);border-radius:999px;padding:3px 10px}
+  .verify .vlink{font-size:12px;color:var(--blue);text-decoration:none}
+  .verify .ph{font-size:9px;color:var(--amber);border:1px solid rgba(244,184,96,.45);border-radius:999px;padding:2px 8px}
+
+  /* notes */
+  .note{display:flex;gap:11px;margin-top:18px;border:1px solid var(--line);border-radius:13px;padding:13px 15px;background:rgba(43,143,224,.05)}
+  .note.good{background:rgba(34,201,166,.06);border-color:rgba(34,201,166,.22)}
+  .note .ic{flex:0 0 auto;color:var(--teal);font-weight:700}
+  .note p{font-size:12.5px;color:var(--muted)} .note b{color:var(--ink)}
+
+  .rowline{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:12px}
+  .rowline b{color:var(--ink)}
+
+  /* footer buttons */
+  .actions{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding:20px 28px}
+  .ghost{background:none;border:1px solid var(--line2);color:var(--muted);border-radius:11px;padding:11px 18px;font-family:var(--sans);font-size:13px;cursor:pointer;transition:.2s}
+  .ghost:hover{color:var(--ink);border-color:var(--teal)}
+  .primary{background:var(--grad);border:none;color:#04223a;font-weight:700;font-family:var(--sans);font-size:14px;border-radius:11px;padding:12px 24px;cursor:pointer;transition:.2s}
+  .primary:hover{filter:brightness(1.07);transform:translateY(-1px)}
+  .primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+  /* ===== dashboard ===== */
+  .dash{display:none}
+  .dash.show{display:block;animation:rise .45s}
+  .dtop{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .dtop .who{font-weight:600;font-size:15px} .dtop .who small{display:block;font-weight:400;font-size:11px;color:var(--muted2)}
+  .badges{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .b{font-size:10px;padding:6px 11px;border-radius:999px;border:1px solid}
+  .b.sample{color:var(--amber);border-color:rgba(244,184,96,.5);background:rgba(244,184,96,.07);letter-spacing:1px}
+  .b.rec{color:#9fd0ff;border-color:rgba(43,143,224,.4)}
+  .b.trade{color:var(--teal);border-color:rgba(34,201,166,.45);background:rgba(34,201,166,.07)}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:14px}
+  @media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{border:1px solid var(--line);border-radius:13px;padding:13px 15px;background:rgba(255,255,255,.014)}
+  .kpi .kl{font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted2)}
+  .kpi .kv{font-size:21px;font-weight:700;margin-top:5px} .kpi .kv.g{color:var(--green)}
+  .kpi .ks{font-size:9px;color:var(--muted);margin-top:2px}
+  .dgrid{display:grid;grid-template-columns:1.5fr 1fr;gap:12px}
+  @media(max-width:760px){.dgrid{grid-template-columns:1fr}}
+  .dpanel{border:1px solid var(--line);border-radius:14px;padding:16px;background:rgba(255,255,255,.012);margin-bottom:12px}
+  .dpanel .h{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;justify-content:space-between}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted2);padding:7px 6px;border-bottom:1px solid var(--line);font-weight:500}
+  td{font-size:12px;padding:9px 6px;border-bottom:1px solid rgba(96,156,214,.08)}
+  td.g{color:var(--green)} td.r{color:#ff9bb0}
+  .sl2{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:9px} .sl2 .k{color:var(--muted)} .sl2 .v{font-weight:600} .sl2 .v.tl{color:var(--teal)}
+  .util{margin-bottom:11px} .util .t{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;color:var(--muted)} .util .t b{color:var(--ink)}
+  .bar{height:6px;border-radius:5px;background:rgba(96,156,214,.16);overflow:hidden}.bar i{display:block;height:100%;background:var(--grad);border-radius:5px}.bar i.warn{background:linear-gradient(90deg,#f4b860,#f0607e)}
+  .revoke{display:block;width:100%;text-align:center;margin-top:6px;font-size:12px;color:#ffb3c2;border:1px solid rgba(240,96,126,.4);background:rgba(240,96,126,.05);border-radius:10px;padding:10px;cursor:pointer}
+  .log .lr{display:flex;gap:12px;font-size:11.5px;padding:6px 0;border-bottom:1px solid rgba(96,156,214,.07)}
+  .log .ts{font-family:var(--mono);color:var(--muted2);flex:0 0 64px} .log .tx{color:var(--ink)} .log .tx b{color:var(--teal)}
+
+  .disclaimer{margin-top:22px;font-size:10px;color:var(--muted2);line-height:1.6;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="app">
+
+  <header>
+    <div class="brand">MX1<small>MARIAH AI · INSTITUTIONAL</small></div>
+    <div class="tag" id="phaseTag">Allocation</div>
+  </header>
+
+  <!-- STEPPER -->
+  <div class="stepper" id="stepper">
+    <div class="stp" data-i="0"><div class="dot">1</div><div class="lbl">Verify</div></div>
+    <div class="stp" data-i="1"><div class="dot">2</div><div class="lbl">Structure</div></div>
+    <div class="stp" data-i="2"><div class="dot">3</div><div class="lbl">Custody</div></div>
+    <div class="stp" data-i="3"><div class="dot">4</div><div class="lbl">Mandate</div></div>
+    <div class="stp" data-i="4"><div class="dot">5</div><div class="lbl">Go live</div></div>
+  </div>
+
+  <!-- ================= WIZARD ================= -->
+  <div class="card" id="wizard">
+
+    <!-- STEP 0 — VERIFY -->
+    <section class="step show" data-step="0">
+      <div class="pad">
+        <span class="eyebrow">Step 1 of 5 — Onboarding</span>
+        <h1 class="screen">Verify your institution</h1>
+        <p class="sub">Standard institutional onboarding — entity KYC/KYB, accreditation and source of funds. Same checks any fund subscription requires.</p>
+        <div class="two">
+          <div class="field"><label>Legal entity name</label><input id="f_entity" placeholder="e.g. Lakeside Family Office LP"></div>
+          <div class="field"><label>Jurisdiction</label><input id="f_juris" placeholder="e.g. Cayman / Delaware"></div>
+        </div>
+        <div class="two">
+          <div class="field"><label>Investor class</label>
+            <select id="f_class"><option>Accredited Investor</option><option>Qualified Purchaser</option><option>Institutional / Eligible Counterparty</option></select>
+          </div>
+          <div class="field"><label>Indicative allocation (USD)</label><input id="f_aum" placeholder="e.g. 50,000,000"></div>
+        </div>
+        <div class="note"><span class="ic">ⓘ</span><p>Identity &amp; entity verification runs via Sumsub. <b>No crypto-specific friction at the front door.</b></p></div>
+      </div>
+      <div class="actions"><span></span><button class="primary" onclick="runKYC()">Verify &amp; continue →</button></div>
+    </section>
+
+    <!-- STEP 1 — STRUCTURE -->
+    <section class="step" data-step="1">
+      <div class="pad">
+        <span class="eyebrow">Step 2 of 5 — How you hold it</span>
+        <h1 class="screen">Choose your structure</h1>
+        <p class="sub">Both run on the same engine. They differ only in custody and economics.</p>
+        <div class="choice">
+          <div class="cbox sel" data-val="SMA" onclick="pick(this,'structure')">
+            <h3>Separately Managed Account</h3><div class="cs">Your own account · recommended for size</div>
+            <ul><li>You own the account outright</li><li>Assets never commingle</li><li>Maximum control &amp; transparency</li><li>Withdraw on your schedule</li></ul>
+          </div>
+          <div class="cbox" data-val="Fund" onclick="pick(this,'structure')">
+            <h3>Pooled Fund</h3><div class="cs">LP interest · simpler entry</div>
+            <ul><li>Subscribe as a fund LP</li><li>Fund-level custodian, admin &amp; auditor</li><li>Audited NAV &amp; statements</li><li>Lighter operational lift</li></ul>
+          </div>
+        </div>
+      </div>
+      <div class="actions"><button class="ghost" onclick="go(-1)">← Back</button><button class="primary" onclick="go(1)">Continue →</button></div>
+    </section>
+
+    <!-- STEP 2 — CUSTODY -->
+    <section class="step" data-step="2">
+      <div class="pad">
+        <span class="eyebrow">Step 3 of 5 — Where your assets live</span>
+        <h1 class="screen">Connect your custody</h1>
+        <p class="sub">Two ways to hold your capital — both keep MX1 <b>trade-only</b>, never able to withdraw. Pick the model your mandate prefers.</p>
+
+        <div data-pickgroup="custody">
+          <!-- LANE 1 — ON-CHAIN -->
+          <div class="lanehdr"><span class="dotg"></span> On-chain · self-custody <em>— you hold the keys</em></div>
+          <p class="lanecap">Your assets sit in the MX1 vault contract your own wallet controls. Trades settle on-chain via DEXs. No third party ever holds them.</p>
+          <div class="chips">
+            <div class="chip sel" data-val="On-chain vault · Polygon" data-onchain="1" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#b66bff,#7b3fe4)">POL</div><div class="nm">Polygon</div><div class="tk">MX1 vault · self-custody</div></div>
+            <div class="chip" data-val="On-chain vault · Arbitrum" data-onchain="1" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#54a0ff,#2b7fe0)">ARB</div><div class="nm">Arbitrum</div><div class="tk">MX1 vault · self-custody</div></div>
+            <div class="chip" data-val="On-chain vault · Ethereum" data-onchain="1" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#8aa0d8,#5a6fb0)">ETH</div><div class="nm">Ethereum</div><div class="tk">MX1 vault · self-custody</div></div>
+            <div class="chip" data-val="On-chain vault · Base" data-onchain="1" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#4f8cff,#2b62e0)">BASE</div><div class="nm">Base</div><div class="tk">MX1 vault · self-custody</div></div>
+          </div>
+
+          <!-- LANE 2 — OFF-CHAIN -->
+          <div class="lanehdr"><span class="dotb"></span> Off-chain custodian <em>— held for you</em></div>
+          <p class="lanecap">A regulated custodian holds your assets; MX1 connects via off-exchange settlement and never gets a transfer path. Most large allocators choose this.</p>
+          <div class="chips">
+            <div class="chip" data-val="Coinbase Prime" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#3b6dff,#2b4fe0)">CB</div><div class="nm">Coinbase Prime</div><div class="tk">Qualified custodian</div></div>
+            <div class="chip" data-val="Anchorage" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#7a5cff,#5a3fe0)">AN</div><div class="nm">Anchorage</div><div class="tk">Federally chartered</div></div>
+            <div class="chip" data-val="BitGo" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#36c2a8,#1f9d83)">BG</div><div class="nm">BitGo</div><div class="tk">Bank &amp; Trust</div></div>
+            <div class="chip" data-val="Fireblocks" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#ff9a4d,#f0762e)">FB</div><div class="nm">Fireblocks</div><div class="tk">MPC infrastructure</div></div>
+            <div class="chip" data-val="Copper" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#54a0ff,#2b7fe0)">CP</div><div class="nm">Copper</div><div class="tk">ClearLoop settlement</div></div>
+          </div>
+        </div>
+
+        <div class="note good"><span class="ic">✓</span><p>Either way, <b>you keep custody and control</b> and MX1 is granted trade-only connectivity — never a transfer or withdrawal path.</p></div>
+      </div>
+      <div class="actions"><button class="ghost" onclick="go(-1)">← Back</button><button class="primary" onclick="connectCustody()">Connect &amp; continue →</button></div>
+    </section>
+
+    <!-- STEP 3 — MANDATE -->
+    <section class="step" data-step="3">
+      <div class="pad">
+        <span class="eyebrow">Step 4 of 5 — Your rules</span>
+        <h1 class="screen">Set your mandate</h1>
+        <p class="sub">You define the risk box MX1 must trade inside. These limits are enforced on every order — the engine cannot exceed them.</p>
+        <div class="slider"><div class="top"><span class="k">Max leverage</span><span class="v"><span id="lev">3.0</span>×</span></div><input type="range" min="10" max="50" value="30" oninput="lev.textContent=(this.value/10).toFixed(1);state.mandate.leverage=this.value/10"></div>
+        <div class="slider"><div class="top"><span class="k">Max single position</span><span class="v"><span id="pos">10</span>% of NAV</span></div><input type="range" min="2" max="30" value="10" oninput="pos.textContent=this.value;state.mandate.position=+this.value"></div>
+        <div class="slider"><div class="top"><span class="k">Daily drawdown stop</span><span class="v">−<span id="dd">5</span>%</span></div><input type="range" min="2" max="20" value="5" oninput="dd.textContent=this.value;state.mandate.drawdown=+this.value"></div>
+        <div class="field" style="margin-top:18px"><label>Approved venues</label>
+          <p style="font-size:11px;color:var(--muted2);margin:-4px 0 8px;text-transform:none;letter-spacing:0">Only venues reachable without your assets leaving custody — on-chain, or via off-exchange settlement.</p>
+          <div class="venues" id="venues">
+            <span class="venue on" onclick="toggleVenue(this)">Uniswap</span>
+            <span class="venue on" onclick="toggleVenue(this)">Hyperliquid</span>
+            <span class="venue" onclick="toggleVenue(this)">GMX</span>
+            <span class="venue on" onclick="toggleVenue(this)">Coinbase Prime</span>
+            <span class="venue" onclick="toggleVenue(this)">Binance (via Ceffu)</span>
+            <span class="venue" onclick="toggleVenue(this)">OKX (institutional)</span>
+          </div>
+        </div>
+        <div class="rowline"><span>Management fee</span><b>2% / yr · negotiated</b></div>
+        <div class="rowline"><span>Performance fee</span><b>20% · high-water mark</b></div>
+      </div>
+      <div class="actions"><button class="ghost" onclick="go(-1)">← Back</button><button class="primary" onclick="go(1)">Continue →</button></div>
+    </section>
+
+    <!-- STEP 4 — AUTHORIZE -->
+    <section class="step" data-step="4">
+      <div class="pad">
+        <span class="eyebrow">Step 5 of 5 — Authorize</span>
+        <h1 class="screen">Grant trade-only authority</h1>
+        <p class="sub">Sign the investment management agreement and authorize the trade-only connection. This is the exact limit of MX1's power:</p>
+        <div class="perm">
+          <div class="pcol can"><h4>✓ MX1 can</h4>
+            <div class="pitem"><b>✓</b><span>Trade your account within your mandate</span></div>
+            <div class="pitem"><b>✓</b><span>Execute autonomously across approved venues</span></div>
+            <div class="pitem"><b>✓</b><span>Report every position &amp; fill in real time</span></div>
+          </div>
+          <div class="pcol cant"><h4>✕ MX1 cannot</h4>
+            <div class="pitem"><b>✕</b><span>Withdraw, transfer, or move your capital</span></div>
+            <div class="pitem"><b>✕</b><span>Trade outside your limits or venues</span></div>
+            <div class="pitem"><b>✕</b><span>Stop you from revoking, anytime</span></div>
+          </div>
+        </div>
+        <div class="verify">
+          <span class="vk">Verify</span>
+          <span class="addr">Vault 0x… </span><span class="ph">deploys at launch</span>
+          <span class="vbadge">CertiK audit</span><span class="ph">pending</span>
+          <a class="vlink" href="#" onclick="return false">View source ↗</a>
+        </div>
+        <div class="note good"><span class="ic">✓</span><p><b>Your capital never leaves your control.</b> Performance is shown only from real, verified figures — never illustrative numbers — and you can revoke trading access in one step, anytime.</p></div>
+      </div>
+      <div class="actions"><button class="ghost" onclick="go(-1)">← Back</button><button class="primary" onclick="authorizeTrading()">Sign &amp; authorize →</button></div>
+    </section>
+  </div>
+
+  <!-- ================= DASHBOARD ================= -->
+  <div class="dash" id="dash">
+    <div class="dtop">
+      <div class="who" id="dashWho">Account — SMA #001<small>Mariah AI · institutional reporting</small></div>
+      <div class="badges">
+        <span class="b sample">● SAMPLE DATA</span>
+        <span class="b rec" id="recBadge">Reconciled to custodian</span>
+        <span class="b trade">MX1: trade-only</span>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="kl">Account value</div><div class="kv">$52.10M</div><div class="ks">at your custodian</div></div>
+      <div class="kpi"><div class="kl">Net P&amp;L · since inception</div><div class="kv g">+$2.10M</div><div class="ks">+4.2% net</div></div>
+      <div class="kpi"><div class="kl">Max drawdown</div><div class="kv">−4.8%</div><div class="ks">limit −8% · within</div></div>
+      <div class="kpi"><div class="kl">Leverage</div><div class="kv">1.8×</div><div class="ks">cap 3.0×</div></div>
+      <div class="kpi"><div class="kl">Fees accrued</div><div class="kv">$0.75M</div><div class="ks">mgmt + perf</div></div>
+    </div>
+    <div class="dgrid">
+      <div>
+        <div class="dpanel"><div class="h"><span>Open positions</span><span>live · multi-venue</span></div>
+          <table>
+            <tr><th>Asset</th><th>Venue</th><th>Side</th><th>Notional</th><th>Unrealized</th></tr>
+            <tr><td>BTC perp</td><td>Binance · Ceffu</td><td>Long</td><td>$6.20M</td><td class="g">+$180K</td></tr>
+            <tr><td>ETH perp</td><td>OKX</td><td>Long</td><td>$4.10M</td><td class="g">+$92K</td></tr>
+            <tr><td>SOL</td><td>Coinbase Prime</td><td>Long</td><td>$2.30M</td><td class="r">−$31K</td></tr>
+            <tr><td>ETH/USDC LP</td><td>Uniswap</td><td>—</td><td>$1.80M</td><td class="g">+$24K</td></tr>
+            <tr><td>USDC idle</td><td>Custody</td><td>—</td><td>$37.7M</td><td>—</td></tr>
+          </table>
+        </div>
+        <div class="dpanel log"><div class="h"><span>Activity &amp; audit log</span><span>exportable</span></div>
+          <div class="lr"><span class="ts">14:32:08</span><span class="tx">Order filled — BTC perp +0.4 · <b>within mandate</b></span></div>
+          <div class="lr"><span class="ts">14:31:55</span><span class="tx">Pre-trade risk check <b>passed</b> — 1.8× ≤ 3.0×</span></div>
+          <div class="lr"><span class="ts">08:00:00</span><span class="tx">Custodian reconciliation <b>matched</b></span></div>
+        </div>
+      </div>
+      <div>
+        <div class="dpanel"><div class="h"><span>Custody &amp; access</span></div>
+          <div class="sl2"><span class="k">Custodian</span><span class="v" id="dashCust">Anchorage (yours)</span></div>
+          <div class="sl2"><span class="k">MX1 access</span><span class="v tl">Trade-only</span></div>
+          <div class="sl2"><span class="k">Withdrawal rights</span><span class="v">Client only</span></div>
+          <div class="sl2"><span class="k">Vault contract</span><span class="v" style="font-family:var(--mono);font-size:11px;color:#9fd0ff">0x… pending</span></div>
+          <div class="sl2"><span class="k">Audit · source</span><span class="v tl">CertiK pending · view</span></div>
+          <div class="revoke" onclick="revoke()">⨯ Revoke MX1 trading access</div>
+        </div>
+        <div class="dpanel"><div class="h"><span>Mandate limits</span><span>enforced pre-trade</span></div>
+          <div class="util"><div class="t"><span>Leverage</span><b>1.8× / 3.0×</b></div><div class="bar"><i style="width:60%"></i></div></div>
+          <div class="util"><div class="t"><span>Largest position</span><b>7% / 10%</b></div><div class="bar"><i style="width:70%"></i></div></div>
+          <div class="util"><div class="t"><span>Drawdown vs stop</span><b>−4.8% / −8%</b></div><div class="bar"><i class="warn" style="width:60%"></i></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Front-end scaffold for internal build · dashboard figures are <b>sample data, not real performance</b> · the trade-only / no-withdraw guarantee is enforced by the audited contract and custody permissions, not by this interface · not an offer or solicitation of any security. Wire backend hooks before any real funds.
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   STATE + STEP CONTROLLER  (no external deps, in-memory only)
+   ============================================================ */
+const state = {
+  step: 0,
+  entity:'', structure:'SMA', custody:'On-chain vault · Polygon', custodyOnchain:true,
+  mandate:{ leverage:3.0, position:10, drawdown:5, venues:['Uniswap','Hyperliquid','Coinbase Prime'] }
+};
+const TOTAL = 5;
+
+function render(){
+  document.querySelectorAll('.step').forEach(s=>s.classList.toggle('show', +s.dataset.step===state.step));
+  document.querySelectorAll('.stp').forEach(s=>{
+    const i=+s.dataset.i; s.classList.toggle('active', i===state.step); s.classList.toggle('done', i<state.step);
+    s.querySelector('.dot').textContent = i<state.step ? '✓' : (i+1);
+  });
+}
+function go(dir){
+  const n = state.step + dir;
+  if(n<0 || n>=TOTAL) return;
+  state.step = n; render();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function pick(el, key){
+  const scope = el.closest('[data-pickgroup]') || el.parentElement;
+  scope.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel'); state[key]=el.dataset.val;
+  if(key==='custody') state.custodyOnchain = el.dataset.onchain === '1';
+}
+function toggleVenue(el){
+  el.classList.toggle('on');
+  state.mandate.venues = [...document.querySelectorAll('.venue.on')].map(v=>v.textContent);
+}
+
+/* ============================================================
+   INTEGRATION HOOKS  — replace each stub with real calls
+   ============================================================ */
+
+// STEP 1 — identity / entity verification
+function runKYC(){
+  // TODO(backend): launch Sumsub KYC/KYB flow; gate on success before advancing.
+  //   const result = await sumsub.verify(state.entity);  if(!result.ok) return showError();
+  state.entity = document.getElementById('f_entity').value || 'Lakeside Family Office';
+  go(1);
+}
+
+// STEP 3 — connect the investor's custodian (assets never move to MX1)
+function connectCustody(){
+  // TODO(backend): open the chosen custodian / OES connection.
+  //   Fireblocks / Copper(ClearLoop) / Ceffu(MirrorX) / Coinbase Prime / Anchorage API,
+  //   OR for "On-chain vault": WalletConnect -> deploy/assign user-owned smart account.
+  go(1);
+}
+
+// STEP 5 — grant TRADE-ONLY authority (the critical one)
+function authorizeTrading(){
+  // TODO(contract): this must grant a SCOPED, REVOCABLE trading key — never withdrawal.
+  //   On-chain rail:  signer = await walletConnect();
+  //                   await vault.setStrategist(MX1_STRATEGIST, mandateToCalldata(state.mandate));
+  //                   // session key / Safe module — see Smart Contract Spec §6
+  //   CEX rail:       create trade-only API key (no withdrawal scope) / OES delegation
+  //   Always: countersign the IMA. Do NOT grant withdrawal permission anywhere.
+  enterDashboard();
+}
+
+// Dashboard — revoke access (must fully disable MX1 immediately)
+function revoke(){
+  // TODO(contract): vault.revokeStrategist()  /  revoke API key / OES delegation.
+  alert('Stub: in production this revokes MX1 trading access on-chain / via custody. (See Smart Contract Spec §6.)');
+}
+
+/* ============================================================
+   DASHBOARD  — replace sample data with reporting API feed
+   ============================================================ */
+function enterDashboard(){
+  document.getElementById('wizard').style.display='none';
+  document.getElementById('stepper').style.display='none';
+  document.getElementById('phaseTag').textContent='Live';
+  document.getElementById('dashWho').firstChild.textContent =
+     (state.entity || 'Account') + ' — ' + state.structure + ' #001';
+  document.getElementById('dashCust').textContent = state.custody + (state.custodyOnchain ? ' · yours' : ' (yours)');
+  document.getElementById('recBadge').textContent = state.custodyOnchain ? 'Verified on-chain' : ('Reconciled to ' + state.custody);
+  const d = document.getElementById('dash'); d.classList.add('show');
+  window.scrollTo({top:0,behavior:'smooth'});
+  // TODO(backend): subscribe to your reporting API; replace ALL figures with
+  //   real, custodian-reconciled values. Never populate with illustrative numbers.
+}
+
+render();
+</script>
+</body>
+</html>
