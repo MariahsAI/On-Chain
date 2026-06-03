@@ -498,6 +498,53 @@ function runKYC(){
 }
 
 // STEP 3 — connect the investor's custodian (assets never move to MX1)
+// Real, custodian-specific connection instructions. Exact UI labels follow each
+// provider's current API docs; the credential model below is accurate per provider.
+const CUSTODY_GUIDES = {
+  'Coinbase Prime': { cred:'Access Key + Secret + Passphrase',
+    sub:'Trade-only API key. Assets stay in Coinbase Prime Custody (qualified custodian).',
+    steps:[
+      'In Coinbase Prime, open <b>Settings → APIs</b> and create a key for your portfolio.',
+      'Set permissions to <b>read + trade</b> only — leave <b style="color:var(--red)">transfer/withdraw</b> off. Add MX1\'s IPs to the allowlist.',
+      'Provide the <b>Access Key, Secret &amp; Passphrase</b> on MX1\'s secure connection page.'
+    ]},
+  'Anchorage': { cred:'API Key + Secret',
+    sub:'Trade-only API key. Withdrawals stay behind your member quorum.',
+    steps:[
+      'In Anchorage, create an <b>API key</b> and assign it <b>trading</b> permission.',
+      'Keep <b style="color:var(--red)">withdrawals</b> gated by your quorum policy; scope the key to your trading vault and allowlist MX1\'s IPs.',
+      'Provide the <b>API key &amp; secret</b> on MX1\'s secure connection page.'
+    ]},
+  'BitGo': { cred:'API Access Token',
+    sub:'Trade-only access token. Assets stay in BitGo Trust custody.',
+    steps:[
+      'In BitGo, open <b>Account → Developer Options</b> and create an <b>API access token</b>.',
+      'Scope it to <b>trading</b> only — <b style="color:var(--red)">no spend/withdraw</b> — and restrict by wallet + IP.',
+      'Provide the <b>access token</b> on MX1\'s secure connection page.'
+    ]},
+  'Fireblocks': { cred:'API Key + signing secret (CSR)',
+    sub:'Trade-only API user. Withdrawals blocked by your Transaction Authorization Policy.',
+    steps:[
+      'In Fireblocks, create an <b>API user</b> and generate a key pair (upload your <b>CSR</b>).',
+      'Assign a <b>non-withdrawal trading role</b> and set <b>TAP rules</b> so it can trade but not withdraw; allowlist MX1\'s IPs.',
+      'Provide the <b>API key &amp; signing secret</b> on MX1\'s secure connection page.'
+    ]},
+  'Copper': { cred:'API Key + Secret',
+    sub:'Trade-only via ClearLoop. Assets stay in Copper custody.',
+    steps:[
+      'In Copper, enable <b>ClearLoop</b> and delegate trading to your connected venues (assets stay in custody).',
+      'Create an API key scoped to <b>trading</b> only — <b style="color:var(--red)">no withdrawal</b> — and allowlist MX1\'s IPs.',
+      'Provide the <b>API credentials</b> on MX1\'s secure connection page.'
+    ]}
+};
+const GENERIC_GUIDE = { cred:'API Key + Secret',
+  sub:'Trade-only API key. Your assets stay with your custodian.',
+  steps:[
+    'In your custodian, create an API key scoped to <b>read + trade</b> — <b style="color:var(--red)">not transfer</b>.',
+    'Allowlist MX1\'s server IPs so the key only works from MX1.',
+    'Provide the credentials on MX1\'s secure connection page.'
+  ]};
+
 function connectCustody(){
   const body = document.getElementById('modalBody');
   if(state.custodyOnchain){
@@ -505,17 +552,17 @@ function connectCustody(){
       '<h3>Connect your wallet</h3>'+
       '<div class="msub">On-chain self-custody on '+state.custody+'. No API key — you authorize with a wallet signature.</div>'+
       '<div class="mstep"><div class="mn">1</div><div class="mt">Connect the wallet that will <b>own your vault</b> (WalletConnect / your wallet app).</div></div>'+
-      '<div class="mstep"><div class="mn">2</div><div class="mt">Sign once to grant MX1 a <b>scoped, revocable trade-only key</b> — never withdrawal.</div></div>'+
+      '<div class="mstep"><div class="mn">2</div><div class="mt">Sign once to grant MX1 a <b>scoped, revocable trade-only session key</b> — never withdrawal.</div></div>'+
       '<div class="msecure"><span>🔒</span><span>Your private keys never leave your wallet. MX1 only receives a session key, which you revoke anytime.</span></div>'+
       '<div class="mbtns"><button class="mclose" onclick="closeModal()">Cancel</button><button class="mgo" onclick="submitConnection()">Connect wallet →</button></div>';
   } else {
+    const g = CUSTODY_GUIDES[state.custody] || GENERIC_GUIDE;
+    const steps = g.steps.map((s,i)=>'<div class="mstep"><div class="mn">'+(i+1)+'</div><div class="mt">'+s+'</div></div>').join('');
     body.innerHTML =
       '<h3>Connect '+state.custody+'</h3>'+
-      '<div class="msub">Link your custodian with a trade-only key. Your assets stay with '+state.custody+'.</div>'+
-      '<div class="mstep"><div class="mn">1</div><div class="mt">In your '+state.custody+' account, create an API key scoped to <b>read + trade</b> — <b style="color:var(--red)">not transfer</b>.</div></div>'+
-      '<div class="mstep"><div class="mn">2</div><div class="mt">Allowlist MX1\'s server IPs so the key only works from MX1.</div></div>'+
-      '<div class="mstep"><div class="mn">3</div><div class="mt">Enter the credentials on MX1\'s <b>secure connection page</b> — never on this screen.</div></div>'+
-      '<div class="msecure"><span>🔒</span><span>For your security, credentials are captured and encrypted on MX1\'s backend — never in your browser.</span></div>'+
+      '<div class="msub">'+g.sub+'</div>'+
+      steps+
+      '<div class="msecure"><span>🔒</span><span>You\'ll provide your <b>'+g.cred+'</b> on MX1\'s secure connection page — captured and encrypted on the backend, never in your browser.</span></div>'+
       '<div class="mbtns"><button class="mclose" onclick="closeModal()">Cancel</button><button class="mgo" onclick="submitConnection()">Continue to secure connection →</button></div>';
   }
   document.getElementById('connectModal').classList.add('show');
@@ -523,13 +570,17 @@ function connectCustody(){
 function closeModal(){ document.getElementById('connectModal').classList.remove('show'); }
 function submitConnection(){
   // TODO(backend): hand off to your SERVER — never the browser.
-  //   Off-chain custodian (Coinbase Prime / BitGo / Fireblocks / ...):
-  //     redirect to a secure, backend-hosted page (or OAuth) where the client
-  //     enters the scoped read+trade API key/secret/passphrase. The backend
-  //     stores it ENCRYPTED, server-side, IP-allowlisted. The key must NEVER
-  //     touch this front-end or live in the DOM. Do NOT request transfer scope.
-  //   On-chain vault: open WalletConnect -> wallet signs to grant a scoped,
-  //     revocable session key to the audited vault (MX1Vault.sol setStrategist()).
+  //   Off-chain custodian: redirect to a secure, backend-hosted page (or OAuth)
+  //     where the client enters the scoped read+trade credentials for that provider:
+  //       Coinbase Prime -> Access Key + Secret + Passphrase
+  //       Anchorage      -> API Key + Secret (withdrawals behind member quorum)
+  //       BitGo          -> API Access Token (trading scope, no spend)
+  //       Fireblocks     -> API Key + signing secret (CSR); TAP blocks withdrawal
+  //       Copper         -> API Key + Secret (ClearLoop trading delegation)
+  //     Backend stores ENCRYPTED, server-side, IP-allowlisted. Never in the DOM.
+  //     Do NOT request transfer/withdraw scope on any key.
+  //   On-chain vault: WalletConnect -> wallet signs to grant a scoped, revocable
+  //     session key to the audited vault (MX1Vault.sol setStrategist()).
   closeModal();
   go(1);
 }
