@@ -282,7 +282,7 @@
 
           <!-- LANE 2 — OFF-CHAIN -->
           <div class="lanehdr"><span class="dotb"></span> Off-chain custodian <em>— held for you</em></div>
-          <p class="lanecap">A regulated custodian holds your assets; MX1 connects via off-exchange settlement and never gets a transfer path. Most large allocators choose this.</p>
+          <p class="lanecap">A regulated custodian holds your assets; MX1 connects through a <b>scoped, trade-only API key</b> (e.g. Coinbase Prime: trade permission only) or off-exchange settlement — never transfer or withdrawal. Most large allocators choose this.</p>
           <div class="chips">
             <div class="chip" data-val="Coinbase Prime" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#3b6dff,#2b4fe0)">CB</div><div class="nm">Coinbase Prime</div><div class="tk">Qualified custodian</div></div>
             <div class="chip" data-val="Anchorage" onclick="pick(this,'custody')"><div class="tok" style="background:linear-gradient(135deg,#7a5cff,#5a3fe0)">AN</div><div class="nm">Anchorage</div><div class="tk">Federally chartered</div></div>
@@ -482,8 +482,12 @@ function runKYC(){
 // STEP 3 — connect the investor's custodian (assets never move to MX1)
 function connectCustody(){
   // TODO(backend): open the chosen custodian / OES connection.
-  //   Fireblocks / Copper(ClearLoop) / Ceffu(MirrorX) / Coinbase Prime / Anchorage API,
+  //   Coinbase Prime: client grants a SCOPED API key with TRADE permission only
+  //     (read + trade, NOT transfer/withdraw) into this app; assets stay in Prime Custody
+  //     (Coinbase Custody Trust, qualified custodian). Prime API: REST / FIX / WebSocket.
+  //   Fireblocks / Copper(ClearLoop) / Ceffu(MirrorX) / Anchorage API for the others.
   //   OR for "On-chain vault": WalletConnect -> deploy/assign user-owned smart account.
+  //   NEVER request transfer/withdrawal scope on any custodian key.
   go(1);
 }
 
