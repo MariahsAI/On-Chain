@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MX1 · Mariah</title>
+<!--
+  MX1 / MARIAH AI — MAIN PAGE (front-end scaffold)
+  Buttons are stubs — wire them up:
+    continueOKX()   -> OKX OAuth, TRADE-ONLY scope (no withdrawal)
+    connectWallet() -> WalletConnect -> grant scoped session key to MX1 vault
+    institutional() -> route to the institutional flow
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+  :root{
+    --bg:#08101e;--bg2:#0b1626;--line:rgba(96,156,214,.18);--line2:rgba(96,156,214,.30);
+    --ink:#eef4fb;--muted:#9ab0cc;--muted2:#6c8198;--teal:#22c9a6;--green:#34d39a;
+    --grad:linear-gradient(95deg,#2b8fe0,#22c9a6);
+    --serif:'Fraunces',Georgia,serif;--sans:'Hanken Grotesk',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;
+    background:radial-gradient(900px 480px at 80% -14%,rgba(43,143,224,.12),transparent 60%),
+      radial-gradient(760px 420px at 8% 114%,rgba(34,201,166,.09),transparent 60%),
+      linear-gradient(180deg,var(--bg),var(--bg2));
+    display:flex;flex-direction:column;align-items:center;padding:46px 20px 26px}
+  .grid{position:fixed;inset:0;pointer-events:none;opacity:.5;z-index:0;
+    background-image:linear-gradient(rgba(96,156,214,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(96,156,214,.04) 1px,transparent 1px);background-size:32px 32px}
+  .shell{position:relative;z-index:1;width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center;text-align:center;flex:1}
+
+  .logo{font-family:var(--serif);font-weight:700;font-size:26px;letter-spacing:1px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .logo small{display:block;font-family:var(--sans);font-weight:500;font-size:9px;letter-spacing:1px;color:var(--muted2);margin-top:2px}
+  .status{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--green);border:1px solid rgba(52,211,154,.3);background:rgba(52,211,154,.07);border-radius:999px;padding:6px 15px;margin-top:24px}
+  .status .d{width:7px;height:7px;border-radius:50%;background:var(--green)}
+  h1{font-family:var(--serif);font-weight:700;font-size:clamp(30px,9vw,40px);margin-top:24px;line-height:1.06}
+  .tag{font-size:14px;color:var(--muted);margin-top:13px}
+  .tag .b{display:block;color:var(--teal);font-size:13px;font-weight:700;margin-top:5px}
+
+  .seg{display:flex;gap:6px;width:100%;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:14px;padding:5px;margin-top:34px}
+  .seg .t{flex:1;font-family:var(--sans);font-size:14px;font-weight:700;padding:13px;border-radius:10px;color:var(--muted);background:none;border:none;cursor:pointer;transition:.2s}
+  .seg .t.on{background:var(--grad);color:#04223a}
+
+  .action{width:100%;border-radius:14px;padding:17px 18px;margin-top:16px;display:flex;align-items:center;gap:13px;font-weight:700;font-size:16px;cursor:pointer;border:none;font-family:var(--sans);transition:.15s}
+  .action:hover{transform:translateY(-1px)}
+  .action.okx{background:#f3f7fb;color:#0b1a2b}
+  .action.wallet{background:rgba(255,255,255,.03);color:var(--ink);border:1px solid var(--line2)}
+  .action .ic{border-radius:7px;padding:5px 9px;font-size:12px;color:#fff}
+  .action .ar{margin-left:auto;color:var(--muted2);font-size:18px}
+
+  .explain{width:100%;border:1px solid var(--line2);border-radius:14px;padding:15px 17px;margin-top:14px}
+  .explain p{font-size:12.5px;color:var(--muted);line-height:1.5}
+  .explain a{display:inline-block;margin-top:7px;color:var(--teal);font-size:12.5px;text-decoration:none;cursor:pointer}
+
+  .inst-below{width:100%;margin-top:28px;border:1px solid rgba(34,201,166,.45);background:rgba(34,201,166,.07);border-radius:15px;padding:26px;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--teal);font-weight:700;font-size:19px;cursor:pointer;font-family:var(--sans);transition:.15s;text-decoration:none}
+  .inst-below:hover{background:rgba(34,201,166,.11)}
+
+  .foot{margin-top:auto;padding-top:26px;display:flex;gap:18px;flex-wrap:wrap;justify-content:center;font-size:11px;color:var(--muted2)}
+  .foot a{color:var(--muted2);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="grid"></div>
+<div class="shell">
+  <div class="logo">MX1<small>mx1trade.com</small></div>
+  <div class="status"><span class="d"></span> All systems operational</div>
+  <h1>Welcome to Mariah</h1>
+  <div class="tag">Autonomous multi-agent AI execution — for self-directed traders<span class="b">Your keys. Your custody. We only trade.</span></div>
+
+  <div class="seg">
+    <button class="t on" data-rail="cex">CEX — Exchange</button>
+    <button class="t" data-rail="dex">DEX — Wallet</button>
+  </div>
+
+  <!-- CEX pane -->
+  <div id="cexPane" style="width:100%">
+    <button class="action okx" onclick="continueOKX()"><span class="ic" style="background:linear-gradient(135deg,#54b0ff,#2b8fe0)">OKX</span> Continue with OKX <span class="ar">›</span></button>
+    <div class="explain"><p>You'll be redirected to OKX to authenticate and grant access. Trades execute on your own OKX account.</p><a>Learn more →</a></div>
+  </div>
+
+  <!-- DEX pane -->
+  <div id="dexPane" style="width:100%" hidden>
+    <button class="action wallet" onclick="connectWallet()"><span class="ic" style="background:linear-gradient(135deg,#b66bff,#7b3fe4)">⬡</span> Connect your wallet <span class="ar">›</span></button>
+    <div class="explain"><p>Your wallet owns an on-chain vault. MX1 gets a scoped, revocable trade-only key — never your keys. Trades settle on-chain via DEXs.</p><a>Learn more →</a></div>
+  </div>
+
+  <!-- Links to the institutional flow. Set this to wherever you host that file
+       (same folder = "mx1-institutional-app.html"; or a route like "/institutional"). -->
+  <a class="inst-below" href="mx1-institutional-app.html">For institutions · Allocate →</a>
+
+  <div class="foot"><a>Terms of service</a><a>Privacy policy</a><a>Help &amp; support</a></div>
+</div>
+
+<script>
+  // CEX / DEX toggle
+  document.querySelectorAll('.seg .t').forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll('.seg .t').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      const dex = b.dataset.rail==='dex';
+      document.getElementById('cexPane').hidden = dex;
+      document.getElementById('dexPane').hidden = !dex;
+    };
+  });
+
+  // --- integration stubs ---
+  function continueOKX(){ /* TODO: OKX OAuth — request TRADE-ONLY scope, no withdrawal */ alert('Stub: connect OKX (trade-only)'); }
+  function connectWallet(){ /* TODO: WalletConnect -> grant scoped session key to MX1 vault */ alert('Stub: connect wallet (on-chain vault)'); }
+</script>
+</body>
+</html>
